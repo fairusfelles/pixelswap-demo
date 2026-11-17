@@ -1,0 +1,906 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PixelSwap — LitVM Testnet DEX Concept (Demo)</title>
+<meta name="description" content="PixelSwap is a demo concept DEX for the LitVM LiteForge testnet. Browser-local simulation: real AMM maths, live mainnet reference prices from Kraken, no contracts deployed, no real funds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&display=swap" rel="stylesheet">
+<style>
+/* ============ PixelSwap — "Arcade Treasury" ============ */
+*{box-sizing:border-box;margin:0;padding:0;border-radius:0!important}
+:root{
+  --bg:#0B0620; --panel:#170B36; --raised:#1F0E4A; --ink:#000000;
+  --magenta:#FF2E88; --cyan:#00E5FF; --gold:#FFC800; --green:#3DFF73; --violet:#7C4DFF;
+  --text:#F4F1FF; --muted:#9D94C7;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  background-color:var(--bg);
+  background-image:
+    linear-gradient(rgba(124,77,255,.055) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(124,77,255,.055) 1px, transparent 1px),
+    radial-gradient(rgba(255,200,0,.05) 1px, transparent 1.6px);
+  background-size:24px 24px, 24px 24px, 48px 48px;
+  background-position:0 0, 0 0, 12px 12px;
+  color:var(--text);
+  font-family:'VT323', ui-monospace, Menlo, Consolas, monospace;
+  font-size:19px; line-height:1.35;
+  min-height:100vh;
+}
+.scanlines{position:fixed;inset:0;z-index:80;pointer-events:none;
+  background:repeating-linear-gradient(0deg, rgba(0,0,0,.13) 0 1px, transparent 1px 3px);opacity:.45}
+.ps{font-family:'Press Start 2P', 'VT323', monospace}
+a{color:var(--cyan)}
+:focus{outline:none}
+:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
+::selection{background:var(--magenta);color:#fff}
+.wrap{max-width:1180px;margin:0 auto;padding:0 14px 40px}
+
+/* ---------- header ---------- */
+header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--panel);border-bottom:3px solid var(--ink);
+  padding:10px 14px;position:relative;z-index:5}
+.brand{display:flex;align-items:center;gap:10px;margin-right:auto}
+.brand .word{font-size:13px;letter-spacing:1px;color:var(--text)}
+.brand .word b{color:var(--magenta);font-weight:400}
+.pill{display:inline-flex;align-items:center;gap:7px;background:var(--raised);
+  border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);
+  padding:3px 10px;font-size:17px;color:var(--text);white-space:nowrap}
+.pill .sq{width:8px;height:8px;background:var(--green);flex:none}
+.pill.net{color:var(--gold)}
+
+/* ---------- buttons ---------- */
+.btn{font-family:'VT323',monospace;font-size:20px;line-height:1;
+  background:var(--raised);color:var(--text);
+  border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+  padding:11px 16px;cursor:pointer;user-select:none;text-align:center}
+.btn:hover{filter:brightness(1.18)}
+.btn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.btn:disabled{opacity:.42;cursor:not-allowed;filter:none}
+.btn:disabled:active{transform:none;box-shadow:4px 4px 0 var(--ink)}
+.btn.primary{background:var(--magenta);color:#fff;font-size:23px;padding:14px 16px;width:100%}
+.btn.gold{background:var(--gold);color:#0B0620}
+.btn.small{font-size:17px;padding:6px 10px;box-shadow:3px 3px 0 var(--ink)}
+.btn.small:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+
+/* ---------- hero ---------- */
+.hero{text-align:center;padding:30px 6px 8px}
+.badge{display:inline-block;background:var(--gold);color:#0B0620;
+  font-family:'Press Start 2P',monospace;font-size:9px;letter-spacing:.5px;
+  border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);padding:8px 10px}
+.hero h1{font-size:clamp(24px,7.2vw,44px);letter-spacing:2px;margin:20px 0 4px;color:var(--text);
+  text-shadow:4px 4px 0 var(--ink)}
+.hero h1 .px{color:var(--magenta)}
+.hero-coins{position:relative;display:flex;justify-content:center;gap:16px;margin:16px auto 6px;width:max-content;max-width:100%}
+.hero-coin{display:block;animation:bob 1.15s steps(3) 1 both}
+.hero-coin:nth-child(2){animation-delay:.13s}.hero-coin:nth-child(3){animation-delay:.26s}.hero-coin:nth-child(4){animation-delay:.39s}
+@keyframes bob{0%{transform:translateY(0)}35%{transform:translateY(-9px)}70%{transform:translateY(0)}100%{transform:translateY(0)}}
+.sparkle{position:absolute;width:6px;height:6px;background:var(--gold);opacity:0;animation:spark 1s steps(2) 1 both}
+.sparkle.s2{background:var(--cyan);animation-delay:.3s}.sparkle.s3{background:#fff;animation-delay:.55s}
+@keyframes spark{0%{opacity:0}35%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion: reduce){.hero-coin,.sparkle{animation:none}.sparkle{opacity:0}}
+.lede{max-width:560px;margin:8px auto 0;color:var(--text);font-size:21px}
+.lede .hl{color:var(--cyan)}
+.feedline{margin-top:14px;display:flex;justify-content:center;align-items:center;gap:9px;flex-wrap:wrap;color:var(--muted);font-size:18px}
+.feedline .sq{width:9px;height:9px;background:var(--green);flex:none}
+.feedline .sq.sim{background:var(--gold)}
+.feedstate{font-size:16px;padding:1px 8px;border:3px solid var(--ink);background:var(--raised);color:var(--green)}
+.feedstate.sim{color:var(--gold)}
+
+/* ---------- stat tiles ---------- */
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:22px 0 6px}
+.tile{background:var(--raised);border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);padding:12px 14px}
+.tile .lab{color:var(--muted);font-size:17px}
+.tile .val{font-size:31px;line-height:1.05;margin-top:2px}
+.tile .val.ok{color:var(--green)} .tile .val.warn{color:var(--magenta)}
+@media(min-width:720px){.tiles{grid-template-columns:repeat(4,1fr)}}
+
+/* ---------- cards & layout ---------- */
+.card{background:var(--panel);border:3px solid var(--ink);box-shadow:6px 6px 0 var(--ink);padding:16px;margin-top:22px}
+.card h2{font-family:'Press Start 2P',monospace;font-size:12px;letter-spacing:.5px;line-height:1.7;margin-bottom:12px}
+.card h2 .accent{color:var(--cyan)}
+.layout{display:block}
+@media(min-width:1024px){
+  .layout{display:grid;grid-template-columns:410px 1fr;gap:22px;align-items:start}
+  .layout .card{margin-top:22px}
+  .col-right{display:block}
+  .faucetlog{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .faucetlog .card{height:100%}
+}
+
+/* ---------- swap cabinet ---------- */
+.cabinet{background:var(--raised);border:4px solid var(--ink);box-shadow:8px 8px 0 var(--ink);padding:0;overflow:hidden}
+.marquee{background:var(--magenta);border-bottom:4px solid var(--ink);
+  display:flex;align-items:center;gap:10px;padding:10px 14px}
+.marquee .mt{font-family:'Press Start 2P',monospace;font-size:13px;color:#fff;letter-spacing:1px;margin-right:auto}
+.lamp{width:10px;height:10px;background:var(--gold);border:2px solid var(--ink);flex:none}
+.lamp.c{background:var(--cyan)}
+.cab-body{padding:16px}
+.tokrow{background:var(--bg);border:3px solid var(--ink);padding:10px 12px}
+.tokrow .cap{color:var(--muted);font-size:16px;display:flex;justify-content:space-between;gap:8px}
+.tokrow .cap .bal{color:var(--text)}
+.pickrow{display:flex;gap:10px;align-items:stretch;margin-top:6px}
+.coinbox{display:flex;align-items:center;justify-content:center;background:var(--panel);
+  border:3px solid var(--ink);width:52px;flex:none}
+.selwrap{position:relative;flex:none;width:118px}
+.selwrap::after{content:"";position:absolute;right:11px;top:50%;margin-top:-3px;
+  border-left:6px solid transparent;border-right:6px solid transparent;border-top:8px solid var(--gold);pointer-events:none}
+select,input[type=text]{font-family:'VT323',monospace;color:var(--text);background:var(--panel);
+  border:3px solid var(--ink);width:100%}
+select{appearance:none;-webkit-appearance:none;font-size:21px;padding:9px 26px 9px 10px;cursor:pointer;height:100%}
+input[type=text]{font-size:26px;padding:7px 10px;min-width:0}
+input[type=text]::placeholder{color:var(--muted)}
+.amtrow{display:flex;gap:10px;flex:1;min-width:0}
+.maxbtn{flex:none}
+.flipwrap{display:flex;justify-content:center;margin:10px 0}
+.flipbtn{background:var(--gold);border:3px solid var(--ink);box-shadow:4px 4px 0 var(--ink);
+  width:52px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.flipbtn:active{transform:translate(3px,3px);box-shadow:1px 1px 0 var(--ink)}
+.details{margin-top:14px;border-top:3px solid var(--ink);padding-top:10px;font-size:19px}
+.details .row{display:flex;justify-content:space-between;gap:12px;padding:2px 0}
+.details .row .k{color:var(--muted)}
+.details .row .v{text-align:right}
+.details .row .v.warn{color:var(--gold)}
+.err{display:none;margin-top:12px;background:var(--panel);border:3px solid var(--magenta);
+  color:var(--text);padding:9px 11px;font-size:18px}
+.err.show{display:block}
+.swapbtn-wrap{margin-top:14px}
+.hintline{margin-top:10px;color:var(--muted);font-size:17px;text-align:center}
+
+/* ---------- chart ---------- */
+.tabs{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.tab{display:inline-flex;align-items:center;gap:8px;background:var(--panel);color:var(--text);
+  border:3px solid var(--ink);box-shadow:3px 3px 0 var(--ink);padding:6px 12px;
+  font-family:'VT323',monospace;font-size:19px;cursor:pointer}
+.tab:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.tab.on{background:var(--magenta);color:#fff}
+canvas#chart{display:block;width:100%;height:190px;background:var(--bg);border:3px solid var(--ink)}
+.legend{display:flex;gap:18px;flex-wrap:wrap;margin-top:10px;color:var(--muted);font-size:17px}
+.legend .li{display:inline-flex;align-items:center;gap:7px}
+.legend .sw{width:16px;height:5px;background:var(--cyan);flex:none}
+.legend .sw.ref{background:repeating-linear-gradient(90deg,var(--muted) 0 4px,transparent 4px 7px)}
+
+/* ---------- pools ---------- */
+.poolcard{background:var(--panel);border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);padding:14px;margin-top:14px}
+.poolcard:first-of-type{margin-top:0}
+.poolhead{display:flex;align-items:center;gap:11px}
+.poolhead .pn{font-family:'Press Start 2P',monospace;font-size:11px;line-height:1.6}
+.poolhead .ptvl{margin-left:auto;text-align:right}
+.poolhead .ptvl .lab{color:var(--muted);font-size:15px;line-height:1}
+.poolhead .ptvl .v{font-size:24px;line-height:1.1}
+.reserves{margin-top:10px;font-size:19px}
+.reserves .row{display:flex;justify-content:space-between;gap:10px;padding:1px 0}
+.reserves .row .k{color:var(--muted)}
+.poolmeta{margin-top:8px;color:var(--muted);font-size:17px;display:flex;gap:16px;flex-wrap:wrap}
+.poolmeta b{color:var(--text);font-weight:400}
+.liqform{margin-top:13px;border-top:3px solid var(--ink);padding-top:12px}
+.liqform .cap{font-size:18px;margin-bottom:8px}
+.liqgrid{display:flex;gap:10px}
+.liqgrid .grow{flex:1;min-width:0}
+.liqmatch{margin-top:8px;font-size:18px;color:var(--muted)}
+.liqmatch b{color:var(--gold);font-weight:400}
+.liqform .btn{margin-top:11px;width:100%}
+.lpinfo{margin-top:9px;font-size:18px;color:var(--green)}
+
+/* ---------- faucet & log ---------- */
+.faucet-amt{font-size:21px;margin-bottom:6px}
+.faucet-amt .g{color:var(--gold)}
+.faucet-note{color:var(--muted);font-size:17px;margin-top:9px}
+.log{list-style:none;font-size:18px}
+.log li{display:flex;gap:9px;padding:5px 0;border-bottom:2px solid rgba(0,0,0,.55)}
+.log li:last-child{border-bottom:none}
+.log .dot{width:9px;height:9px;flex:none;margin-top:8px;background:var(--violet)}
+.log li.keeper .dot{background:var(--green)}
+.log li.swap .dot{background:var(--magenta)}
+.log li.faucet .dot{background:var(--gold)}
+.log .lt{color:var(--muted);flex:none}
+.log .empty{color:var(--muted)}
+
+/* ---------- footer / toast ---------- */
+footer{margin-top:30px;border-top:3px solid var(--ink);padding-top:16px;color:var(--muted);font-size:17px}
+footer .fh{color:var(--text);font-family:'Press Start 2P',monospace;font-size:10px;margin-bottom:9px}
+footer p{margin-bottom:8px;max-width:760px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translate(-50%,16px);z-index:90;
+  background:var(--raised);color:var(--text);border:3px solid var(--ink);box-shadow:5px 5px 0 var(--ink);
+  padding:11px 16px;font-size:19px;max-width:min(92vw,520px);text-align:center;
+  opacity:0;pointer-events:none;transition:opacity .18s steps(3),transform .18s steps(3)}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+<div class="scanlines" aria-hidden="true"></div>
+
+<header class="top">
+  <div class="brand">
+    <span id="logoMark" aria-hidden="true"></span>
+    <span class="word ps">PIXEL<b>SWAP</b></span>
+  </div>
+  <span class="pill net"><span class="sq" aria-hidden="true"></span>LitVM Testnet · Chain 4441</span>
+  <button class="btn gold" id="connectBtn" type="button">Connect demo wallet</button>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <span class="badge">DEMO — BROWSER SIMULATION</span>
+    <h1 class="ps">PIXEL<span class="px">SWAP</span></h1>
+    <div class="hero-coins" id="heroCoins" aria-hidden="true"></div>
+    <p class="lede">A concept DEX for the <span class="hl">LitVM LiteForge testnet</span> whose pool prices mirror mainnet — an automated keeper trades the pools back toward the reference price whenever they drift.</p>
+    <div class="feedline">
+      <span class="sq" id="feedDot" aria-hidden="true"></span>
+      <span>reference: mainnet price via Kraken</span>
+      <span class="feedstate" id="feedState">connecting…</span>
+    </div>
+  </section>
+
+  <section class="tiles" aria-label="Market stats">
+    <div class="tile"><div class="lab" id="tileRefLab">Reference price · zkLTC</div><div class="val" id="tileRef">—</div></div>
+    <div class="tile"><div class="lab" id="tilePoolLab">Pool price · zkLTC/LUSD</div><div class="val" id="tilePool">—</div></div>
+    <div class="tile"><div class="lab">Deviation from reference</div><div class="val" id="tileDev">—</div></div>
+    <div class="tile"><div class="lab">Total value locked · all pools</div><div class="val" id="tileTvl">—</div></div>
+  </section>
+
+  <div class="layout">
+    <div class="col-left">
+      <section class="card cabinet" aria-label="Swap">
+        <div class="marquee"><span class="lamp" aria-hidden="true"></span><span class="lamp c" aria-hidden="true"></span><span class="mt">SWAP</span></div>
+        <div class="cab-body">
+          <div class="tokrow">
+            <div class="cap"><span>You pay</span><span class="bal" id="fromBal">Wallet not connected</span></div>
+            <div class="pickrow">
+              <span class="coinbox" id="fromIcon" aria-hidden="true"></span>
+              <span class="selwrap"><select id="fromSel" aria-label="Token you pay"></select></span>
+              <span class="amtrow">
+                <input type="text" id="fromAmt" inputmode="decimal" autocomplete="off" placeholder="0.0" aria-label="Amount you pay">
+                <button class="btn small maxbtn" id="maxBtn" type="button">MAX</button>
+              </span>
+            </div>
+          </div>
+
+          <div class="flipwrap">
+            <button class="flipbtn" id="flipBtn" type="button" aria-label="Flip swap direction"><span id="flipIcon" aria-hidden="true"></span></button>
+          </div>
+
+          <div class="tokrow">
+            <div class="cap"><span>You receive</span><span class="bal" id="toBal">Wallet not connected</span></div>
+            <div class="pickrow">
+              <span class="coinbox" id="toIcon" aria-hidden="true"></span>
+              <span class="selwrap"><select id="toSel" aria-label="Token you receive"></select></span>
+              <span class="amtrow">
+                <input type="text" id="toAmt" readonly placeholder="0.0" aria-label="Amount you receive">
+              </span>
+            </div>
+          </div>
+
+          <div class="details">
+            <div class="row"><span class="k">Rate</span><span class="v" id="rateLine">—</span></div>
+            <div class="row" id="routeRow" style="display:none"><span class="k">Route</span><span class="v" id="routeLine">—</span></div>
+            <div class="row"><span class="k">Trading fee</span><span class="v" id="feeLine">—</span></div>
+            <div class="row"><span class="k">Price impact</span><span class="v" id="impactLine">—</span></div>
+          </div>
+
+          <div class="err" id="swapErr" role="alert"></div>
+
+          <div class="swapbtn-wrap"><button class="btn primary" id="swapBtn" type="button">Connect demo wallet</button></div>
+          <p class="hintline">Simulated wallet — no real wallet is ever opened and no signature is ever requested.</p>
+        </div>
+      </section>
+    </div>
+
+    <div class="col-right">
+      <section class="card" aria-label="Price chart">
+        <h2>PRICE <span class="accent">CHART</span></h2>
+        <div class="tabs" id="poolTabs" role="group" aria-label="Choose pool for chart and stats"></div>
+        <canvas id="chart" height="190"></canvas>
+        <div class="legend">
+          <span class="li"><span class="sw" id="legendPoolSw"></span><span id="legendPool">Pool price</span></span>
+          <span class="li"><span class="sw ref"></span><span>Reference (Kraken)</span></span>
+        </div>
+      </section>
+
+      <section class="card" aria-label="Pools">
+        <h2>POOLS <span class="accent">· THE TREASURY</span></h2>
+        <div id="poolCards"></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="faucetlog">
+    <section class="card" aria-label="Testnet faucet">
+      <h2>FAUCET <span class="accent">· TEST TOKENS</span></h2>
+      <p class="faucet-amt">Claim <span class="g">+10 zkLTC</span> and <span class="g">+1,000 LUSD</span> of demo test tokens.</p>
+      <button class="btn gold" id="faucetBtn" type="button" style="width:100%">Claim test tokens</button>
+      <p class="faucet-note" id="faucetNote">Demo faucet — these tokens exist only inside this page. One claim every 30 seconds.</p>
+    </section>
+
+    <section class="card" aria-label="Activity log">
+      <h2>ACTIVITY <span class="accent">· KEEPER LOG</span></h2>
+      <ul class="log" id="logList"><li class="empty">Nothing yet — the keeper reports here.</li></ul>
+    </section>
+  </div>
+
+  <footer>
+    <div class="fh">READ THIS FIRST</div>
+    <p>PixelSwap is a browser-local simulation built to show how this DEX would feel on the LitVM LiteForge testnet (chain 4441). It runs real constant-product AMM maths against a simulated pool in your browser. The reference prices are live mainnet rates fetched from Kraken, which is exactly what the testnet pools mirror.</p>
+    <p>No contracts are deployed on LiteForge, no real funds move, and no wallet signature is ever requested — the wallet, balances, faucet and keeper here are all simulated. PixelSwap is a concept prepared for the LitVM “Submit Your App” directory.</p>
+  </footer>
+</div>
+
+<div class="toast" id="toast" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* =====================================================================
+   PixelSwap — browser-local DEX simulation for LitVM LiteForge testnet.
+   Vanilla JS, no libraries. Real x*y=k AMM maths against simulated
+   pools; reference prices are live mainnet rates from Kraken.
+   ===================================================================== */
+function el(id){ return document.getElementById(id); }
+
+/* ---------- self-drawn pixel art (inline SVG, crispEdges) ---------- */
+var COIN_BASE = [
+".....OOOOOO.....",
+"...OFFFFFFFFO...",
+"..OFHHHFFFFFFO..",
+".OFHHFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+".OFFFFFFFFFFFFO.",
+"..OFFFFFFFFFFO..",
+"...OFFFFFFFFO...",
+".....OOOOOO....."
+];
+var GLYPHS = {
+  zkLTC: ["X....","X....","XXX..","X....","X....","X....","XXXX."],
+  LUSD:  ["..X..",".XXX.","X.X..",".XXX.","..X.X",".XXX.","..X.."],
+  tBTC:  ["XXXX.","X.X.X","X.X.X","XXXX.","X.X.X","X.X.X","XXXX."],
+  tETH:  ["XXXXX","X...X",".....",".XXX.",".....","X...X","XXXXX"]
+};
+var COIN_COLORS = {
+  zkLTC: { F:"#00E5FF", O:"#008CA3", H:"#A9F5FF" },
+  LUSD:  { F:"#FFC800", O:"#A87F00", H:"#FFEC9E" },
+  tBTC:  { F:"#7C4DFF", O:"#4527A0", H:"#CDB6FF" },
+  tETH:  { F:"#3DFF73", O:"#1E9E46", H:"#BCFFCE" }
+};
+function rectsFromMap(map, ox, oy, colorFor){
+  var out = "";
+  for(var y=0; y<map.length; y++){
+    var row = map[y], x = 0;
+    while(x < row.length){
+      var ch = row[x];
+      if(ch === "." || ch === " "){ x++; continue; }
+      var x2 = x;
+      while(x2 < row.length && row[x2] === ch) x2++;
+      out += '<rect x="' + (ox+x) + '" y="' + (oy+y) + '" width="' + (x2-x) + '" height="1" fill="' + colorFor(ch) + '"/>';
+      x = x2;
+    }
+  }
+  return out;
+}
+function coinSVG(tok, size){
+  var c = COIN_COLORS[tok];
+  var body = rectsFromMap(COIN_BASE, 0, 0, function(ch){
+    return ch === "O" ? c.O : (ch === "H" ? c.H : c.F);
+  });
+  var glyph = rectsFromMap(GLYPHS[tok], 6, 4, function(){ return "#0B0620"; });
+  return '<svg width="' + size + '" height="' + size + '" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">' + body + glyph + '</svg>';
+}
+function logoSVG(size){
+  var r = "";
+  function rect(x,y,w,h,f){ r += '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="'+f+'"/>'; }
+  rect(1,3,12,3,"#00E5FF"); rect(13,1,3,7,"#00E5FF"); rect(16,2,3,5,"#00E5FF"); rect(19,3,2,3,"#00E5FF");
+  rect(9,13,12,3,"#FF2E88"); rect(6,11,3,7,"#FF2E88"); rect(3,12,3,5,"#FF2E88"); rect(1,13,2,3,"#FF2E88");
+  rect(10,8,2,2,"#FFC800");
+  return '<svg width="' + size + '" height="' + Math.round(size*20/22) + '" viewBox="0 0 22 20" shape-rendering="crispEdges" aria-hidden="true">' + r + '</svg>';
+}
+el('logoMark').innerHTML = logoSVG(36);
+el('flipIcon').innerHTML = logoSVG(26);
+el('heroCoins').innerHTML =
+  ["zkLTC","LUSD","tBTC","tETH"].map(function(t){ return '<span class="hero-coin">' + coinSVG(t, 54) + '</span>'; }).join("") +
+  '<span class="sparkle" style="left:6%;top:2px"></span><span class="sparkle s2" style="right:10%;top:-4px"></span><span class="sparkle s3" style="left:46%;top:-8px"></span>';
+
+/* ---------- tokens, pools, reference prices ---------- */
+var FEE = 0.003, GAMMA = 1 - FEE;
+var TOK = {
+  zkLTC: { ref:"LTC", dec:3, balDec:2 },
+  LUSD:  { ref:null,  dec:2, balDec:2 },
+  tBTC:  { ref:"BTC", dec:5, balDec:4 },
+  tETH:  { ref:"ETH", dec:4, balDec:3 }
+};
+var TOKEN_LIST = ["zkLTC","LUSD","tBTC","tETH"];
+var FALLBACK = { LTC: 84.20, BTC: 91250, ETH: 3048 };
+var refs = { LTC: FALLBACK.LTC, BTC: FALLBACK.BTC, ETH: FALLBACK.ETH };
+var feedLive = false, feedSeen = false;
+
+var pools = {                       /* x = token reserve, y = LUSD reserve */
+  zkLTC: { x: 80,   y: 80   * refs.LTC },
+  tBTC:  { x: 0.15, y: 0.15 * refs.BTC },
+  tETH:  { x: 3,    y: 3    * refs.ETH }
+};
+var poolTouched = false;            /* set by any user swap / liquidity add */
+var lp = { total: Math.sqrt(pools.zkLTC.x * pools.zkLTC.y), user: 0 };
+
+var START_BAL = { zkLTC: 25, LUSD: 2500, tBTC: 0.05, tETH: 1 };
+var wallet = { connected: false, addr: "0xPIXEL…7F3A", bal: { zkLTC:0, LUSD:0, tBTC:0, tETH:0 } };
+
+var fromTok = "zkLTC", toTok = "LUSD", selPool = "zkLTC", swapBusy = false;
+var corrections = 0, swapsDone = 0;
+
+function poolPrice(tok){ var P = pools[tok]; return P.y / P.x; }        /* LUSD per token */
+function priceOf(tok){ return tok === "LUSD" ? 1 : poolPrice(tok); }
+function refOf(tok){ return tok === "LUSD" ? 1 : refs[TOK[tok].ref]; }
+function poolTVL(tok){ var P = pools[tok]; return P.x * refOf(tok) + P.y; }
+function totalTVL(){ return poolTVL("zkLTC") + poolTVL("tBTC") + poolTVL("tETH"); }
+
+/* ---------- formatting ---------- */
+function fmt(n, d){ if(d == null) d = 2; return n.toLocaleString("en-US",{minimumFractionDigits:d, maximumFractionDigits:d}); }
+function fmtTok(tok, v){ return fmt(v, TOK[tok].dec); }
+function fmtBal(tok, v){ return fmt(v, TOK[tok].balDec); }
+function fmtPrice(v){ return "$" + fmt(v, v >= 100 ? 2 : 3); }
+function fmtSignedPct(v){ return (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%"; }
+function parseAmt(str){ var v = parseFloat(String(str || "").replace(",", ".")); return isFinite(v) && v > 0 ? v : 0; }
+
+/* ---------- toast + activity log ---------- */
+var toastTimer = null;
+function toast(msg){
+  var t = el("toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove("show"); }, 2800);
+}
+function logLine(cls, text){
+  var list = el("logList"); if(!list) return;
+  var empty = list.querySelector(".empty"); if(empty) empty.remove();
+  var li = document.createElement("li");
+  if(cls) li.className = cls;
+  var time = new Date().toTimeString().slice(0,8);
+  li.innerHTML = '<span class="dot" aria-hidden="true"></span><span class="lt">' + time + '</span><span></span>';
+  li.lastChild.textContent = text;
+  list.insertBefore(li, list.firstChild);
+  while(list.children.length > 9) list.removeChild(list.lastChild);
+}
+
+/* ---------- AMM maths (constant product, 0.3% fee) ---------- */
+function hopQuote(P, inputIsToken, ain){
+  var a = ain * GAMMA;
+  if(inputIsToken){
+    var outT = (a * P.y) / (P.x + a);
+    return { out: outT, nx: P.x + ain, ny: P.y - outT };
+  }
+  var outU = (a * P.x) / (P.y + a);
+  return { out: outU, nx: P.x - outU, ny: P.y + ain };
+}
+function quote(from, to, ain){
+  if(from === to || ain <= 0) return null;
+  var legs = (from !== "LUSD" && to !== "LUSD") ? [[from,"LUSD"],["LUSD",to]] : [[from,to]];
+  var hops = [], cur = ain;
+  for(var i=0; i<legs.length; i++){
+    var a = legs[i][0];
+    var poolKey = a === "LUSD" ? legs[i][1] : a;
+    var inputIsToken = a !== "LUSD";
+    var r = hopQuote(pools[poolKey], inputIsToken, cur);
+    hops.push({ poolKey: poolKey, inputIsToken: inputIsToken, ain: cur, out: r.out, nx: r.nx, ny: r.ny });
+    cur = r.out;
+  }
+  var spotOut = ain * priceOf(from) / priceOf(to);
+  var impact = spotOut > 0 ? Math.max(0, (1 - cur / spotOut) * 100) : 0;
+  return { out: cur, hops: hops, impact: impact, rate: cur / ain };
+}
+
+/* ---------- reference feed: live mainnet prices from Kraken ---------- */
+function pickPrice(res, subs){
+  for(var k in res){
+    var ok = true;
+    for(var i=0; i<subs.length; i++){ if(k.indexOf(subs[i]) === -1){ ok = false; break; } }
+    if(ok && res[k] && res[k].c && res[k].c[0]){
+      var v = parseFloat(res[k].c[0]);
+      if(isFinite(v) && v > 0) return v;
+    }
+  }
+  return null;
+}
+function reseedPools(){
+  pools.zkLTC = { x: 80,   y: 80   * refs.LTC };
+  pools.tBTC  = { x: 0.15, y: 0.15 * refs.BTC };
+  pools.tETH  = { x: 3,    y: 3    * refs.ETH };
+  lp.total = Math.sqrt(pools.zkLTC.x * pools.zkLTC.y); lp.user = 0;
+  seedHistory();
+}
+function fetchRefs(){
+  if(typeof fetch !== "function"){ feedLive = false; renderFeed(); return; }
+  fetch("https://api.kraken.com/0/public/Ticker?pair=LTCUSDT,XBTUSDT,ETHUSDT")
+    .then(function(r){ return r.json(); })
+    .then(function(j){
+      var res = j && j.result; if(!res) throw new Error("bad feed");
+      var ltc = pickPrice(res, ["LTC","USDT"]);
+      var btc = pickPrice(res, ["XBT","USDT"]) || pickPrice(res, ["BTC","USDT"]);
+      var eth = pickPrice(res, ["ETH","USDT"]);
+      var got = false;
+      if(ltc){ refs.LTC = ltc; got = true; }
+      if(btc){ refs.BTC = btc; got = true; }
+      if(eth){ refs.ETH = eth; got = true; }
+      if(!got) throw new Error("no prices");
+      feedLive = true;
+      if(!feedSeen){
+        feedSeen = true;
+        if(!poolTouched) reseedPools();       /* start at parity with live prices */
+        logLine("", "Reference feed live — pools mirror mainnet prices from Kraken.");
+      }
+      renderAll();
+    })
+    .catch(function(){
+      feedLive = false;
+      renderFeed(); renderStats();
+    });
+}
+/* offline fallback: gentle random walk around the last known price */
+setInterval(function(){
+  if(feedLive) return;
+  for(var k in refs){ refs[k] *= (1 + (Math.random() - 0.5) * 0.0012); }
+  renderStats(); drawChart();
+}, 5000);
+
+/* ---------- keeper: trades pools back toward the reference ---------- */
+function keeperTick(){
+  var acted = false;
+  ["zkLTC","tBTC","tETH"].forEach(function(tok){
+    var P = pools[tok], ref = refOf(tok);
+    var p = P.y / P.x, dev = (p - ref) / ref;
+    if(Math.abs(dev) <= 0.002) return;                    /* inside the 0.2% deadband */
+    var target = p + (ref - p) * 0.25;                    /* close 25% of the gap this tick */
+    var ain, inputIsToken;
+    if(p > ref){                                          /* token too expensive: sell it in */
+      var a1 = Math.sqrt(P.x * P.y / target) - P.x; if(a1 <= 0) return;
+      ain = Math.min(a1 / GAMMA, P.x * 0.10); inputIsToken = true;
+    } else {                                              /* token too cheap: buy it with LUSD */
+      var a2 = Math.sqrt(target * P.x * P.y) - P.y; if(a2 <= 0) return;
+      ain = Math.min(a2 / GAMMA, P.y * 0.10); inputIsToken = false;
+    }
+    if(!(ain > 0)) return;
+    var r = hopQuote(P, inputIsToken, ain);
+    P.x = r.nx; P.y = r.ny;
+    corrections++;
+    var devAfter = ((P.y / P.x) - ref) / ref * 100;
+    var what = inputIsToken
+      ? "sold " + fmtTok(tok, ain) + " " + tok + " into the pool"
+      : "bought " + tok + " with " + fmt(ain) + " LUSD";
+    logLine("keeper", "Keeper corrected " + tok + "/LUSD: deviation " + fmtSignedPct(dev * 100) +
+      " → " + fmtSignedPct(devAfter) + " — " + what + ".");
+    acted = true;
+  });
+  if(acted){ renderStats(); renderPools(); renderQuote(); drawChart(); }
+}
+
+/* ---------- price history + pixel chart ---------- */
+var hist = { zkLTC: [], tBTC: [], tETH: [] };
+function pushHist(){
+  ["zkLTC","tBTC","tETH"].forEach(function(tok){
+    hist[tok].push({ p: poolPrice(tok), r: refOf(tok) });
+    if(hist[tok].length > 120) hist[tok].shift();
+  });
+}
+function seedHistory(){
+  hist = { zkLTC: [], tBTC: [], tETH: [] };
+  ["zkLTC","tBTC","tETH"].forEach(function(tok){
+    var ref = refOf(tok);
+    for(var i=0; i<26; i++){
+      var r = ref * (1 + Math.sin(i * 0.6) * 0.0012);
+      hist[tok].push({ p: r * (1 + Math.sin(i * 0.45 + 1) * 0.0022), r: r });
+    }
+  });
+}
+function drawChart(){
+  var c = el("chart"); if(!c) return;
+  var dpr = Math.min(2, window.devicePixelRatio || 1);
+  var W = c.clientWidth, H = c.clientHeight;
+  if(!W || !H) return;
+  if(c.width !== Math.round(W * dpr) || c.height !== Math.round(H * dpr)){
+    c.width = Math.round(W * dpr); c.height = Math.round(H * dpr);
+  }
+  var ctx = c.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  var data = hist[selPool]; if(!data || data.length < 2) return;
+  var min = Infinity, max = -Infinity, i, v;
+  for(i=0; i<data.length; i++){
+    v = Math.min(data[i].p, data[i].r); if(v < min) min = v;
+    v = Math.max(data[i].p, data[i].r); if(v > max) max = v;
+  }
+  var pad = (max - min) * 0.18 || max * 0.01 || 1; min -= pad; max += pad;
+  var X = function(i){ return Math.round(8 + (W - 16) * i / (data.length - 1)); };
+  var Y = function(val){ return Math.round(8 + (H - 16) * (1 - (val - min) / (max - min))); };
+  ctx.strokeStyle = "rgba(244,241,255,0.08)"; ctx.lineWidth = 1;
+  ctx.beginPath();
+  for(i=1; i<4; i++){ var gy = Math.round(H * i / 4); ctx.moveTo(0, gy); ctx.lineTo(W, gy); }
+  for(i=1; i<6; i++){ var gx = Math.round(W * i / 6); ctx.moveTo(gx, 0); ctx.lineTo(gx, H); }
+  ctx.stroke();
+  /* reference: dashed */
+  ctx.strokeStyle = "#9D94C7"; ctx.lineWidth = 2; ctx.setLineDash([5, 4]);
+  ctx.beginPath();
+  for(i=0; i<data.length; i++){ var xr = X(i), yr = Y(data[i].r); if(i === 0) ctx.moveTo(xr, yr); else ctx.lineTo(xr, yr); }
+  ctx.stroke(); ctx.setLineDash([]);
+  /* pool price: chunky stepped line with square points */
+  var col = COIN_COLORS[selPool].F;
+  ctx.strokeStyle = col; ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(X(0), Y(data[0].p));
+  for(i=1; i<data.length; i++){ ctx.lineTo(X(i), Y(data[i-1].p)); ctx.lineTo(X(i), Y(data[i].p)); }
+  ctx.stroke();
+  ctx.fillStyle = col;
+  for(i=0; i<data.length; i += 3){ ctx.fillRect(X(i) - 2, Y(data[i].p) - 2, 4, 4); }
+  var last = data[data.length - 1];
+  ctx.fillRect(X(data.length - 1) - 3, Y(last.p) - 3, 6, 6);
+}
+
+/* ---------- rendering ---------- */
+function renderFeed(){
+  var dot = el("feedDot"), st = el("feedState");
+  if(feedLive){ dot.className = "sq"; st.className = "feedstate"; st.textContent = "LIVE"; }
+  else { dot.className = "sq sim"; st.className = "feedstate sim"; st.textContent = feedSeen ? "SIMULATED — feed unreachable" : "SIMULATED"; }
+}
+function renderStats(){
+  el("tileRefLab").textContent = "Reference price · " + selPool;
+  el("tilePoolLab").textContent = "Pool price · " + selPool + "/LUSD";
+  el("tileRef").textContent = fmtPrice(refOf(selPool));
+  el("tilePool").textContent = fmtPrice(poolPrice(selPool));
+  var dev = (poolPrice(selPool) - refOf(selPool)) / refOf(selPool) * 100;
+  var devEl = el("tileDev");
+  devEl.textContent = fmtSignedPct(dev);
+  devEl.className = "val " + (Math.abs(dev) <= 0.5 ? "ok" : "warn");
+  el("tileTvl").textContent = "$" + fmt(totalTVL(), 0);
+}
+function buildPoolCards(){
+  var host = el("poolCards");
+  TOKEN_LIST.forEach(function(tok){
+    if(tok === "LUSD") return;
+    var card = document.createElement("div");
+    card.className = "poolcard";
+    var html =
+      '<div class="poolhead"><span aria-hidden="true">' + coinSVG(tok, 34) + '</span>' +
+      '<span class="pn">' + tok + ' / LUSD</span>' +
+      '<span class="ptvl"><span class="lab">TVL</span><br><span class="v" id="tvl-' + tok + '">—</span></span></div>' +
+      '<div class="reserves">' +
+      '<div class="row"><span class="k">' + tok + ' reserve</span><span id="resX-' + tok + '">—</span></div>' +
+      '<div class="row"><span class="k">LUSD reserve</span><span id="resY-' + tok + '">—</span></div></div>' +
+      '<div class="poolmeta"><span>Pool price <b id="price-' + tok + '">—</b></span>' +
+      '<span>Deviation <b id="dev-' + tok + '">—</b></span></div>';
+    if(tok === "zkLTC"){
+      html +=
+      '<div class="liqform">' +
+        '<div class="cap">Add liquidity to this pool — LUSD is matched automatically at the pool price.</div>' +
+        '<div class="liqgrid"><span class="grow"><input type="text" id="liqAmt" inputmode="decimal" autocomplete="off" placeholder="0.0 zkLTC" aria-label="zkLTC amount to add"></span>' +
+        '<button class="btn gold" id="liqBtn" type="button">Add liquidity</button></div>' +
+        '<div class="liqmatch" id="liqMatch">Matched LUSD: — · your pool share after adding: —</div>' +
+        '<div class="lpinfo" id="lpInfo"></div>' +
+      '</div>';
+    }
+    card.innerHTML = html;
+    host.appendChild(card);
+  });
+  el("liqAmt").addEventListener("input", updateLiqPreview);
+  el("liqBtn").addEventListener("click", doAddLiquidity);
+}
+function renderPools(){
+  TOKEN_LIST.forEach(function(tok){
+    if(tok === "LUSD") return;
+    var P = pools[tok];
+    el("tvl-" + tok).textContent = "$" + fmt(poolTVL(tok), 0);
+    el("resX-" + tok).textContent = fmtTok(tok, P.x) + " " + tok;
+    el("resY-" + tok).textContent = fmt(P.y) + " LUSD";
+    el("price-" + tok).textContent = fmtPrice(poolPrice(tok));
+    var dev = (poolPrice(tok) - refOf(tok)) / refOf(tok) * 100;
+    el("dev-" + tok).textContent = fmtSignedPct(dev);
+  });
+  updateLiqPreview();
+}
+function updateLiqPreview(){
+  var amtEl = el("liqAmt"); if(!amtEl) return;
+  var a = parseAmt(amtEl.value);
+  if(a <= 0){ el("liqMatch").innerHTML = "Matched LUSD: — · your pool share after adding: —"; }
+  else {
+    var matched = a * poolPrice("zkLTC");
+    var minted = (a / pools.zkLTC.x) * lp.total;
+    var share = (lp.user + minted) / (lp.total + minted) * 100;
+    el("liqMatch").innerHTML = "Matched LUSD: <b>" + fmt(matched) + " LUSD</b> · your pool share after adding: <b>" + share.toFixed(2) + "%</b>";
+  }
+  el("lpInfo").textContent = lp.user > 0
+    ? "Your liquidity: " + fmt(lp.user) + " LP tokens · " + (lp.user / lp.total * 100).toFixed(2) + "% of the zkLTC/LUSD pool."
+    : "";
+}
+function buildTabs(){
+  var host = el("poolTabs");
+  ["zkLTC","tBTC","tETH"].forEach(function(tok){
+    var b = document.createElement("button");
+    b.type = "button"; b.className = "tab" + (tok === selPool ? " on" : "");
+    b.setAttribute("data-pool", tok);
+    b.innerHTML = coinSVG(tok, 18) + "<span>" + tok + "/LUSD</span>";
+    b.addEventListener("click", function(){ selPool = tok; syncPoolUI(); });
+    host.appendChild(b);
+  });
+}
+function syncPoolUI(){
+  var tabs = el("poolTabs").children;
+  for(var i=0; i<tabs.length; i++){ tabs[i].className = "tab" + (tabs[i].getAttribute("data-pool") === selPool ? " on" : ""); }
+  el("legendPool").textContent = selPool + "/LUSD pool price";
+  el("legendPoolSw").style.background = COIN_COLORS[selPool].F;
+  renderStats(); drawChart();
+}
+function fillSelect(sel, val){
+  sel.innerHTML = "";
+  TOKEN_LIST.forEach(function(t){
+    var o = document.createElement("option");
+    o.value = t; o.textContent = t;
+    sel.appendChild(o);
+  });
+  sel.value = val;
+}
+function renderSwapHeads(){
+  el("fromIcon").innerHTML = coinSVG(fromTok, 30);
+  el("toIcon").innerHTML = coinSVG(toTok, 30);
+  el("fromSel").value = fromTok;
+  el("toSel").value = toTok;
+  el("fromBal").textContent = wallet.connected ? "Balance: " + fmtBal(fromTok, wallet.bal[fromTok]) + " " + fromTok : "Wallet not connected";
+  el("toBal").textContent = wallet.connected ? "Balance: " + fmtBal(toTok, wallet.bal[toTok]) + " " + toTok : "Wallet not connected";
+}
+function fmtRate(v){
+  if(v >= 100) return fmt(v, 2);
+  if(v >= 1) return fmt(v, 4);
+  return String(parseFloat(v.toFixed(8)));
+}
+function renderQuote(){
+  renderSwapHeads();
+  var ain = parseAmt(el("fromAmt").value);
+  var q = ain > 0 ? quote(fromTok, toTok, ain) : null;
+  el("toAmt").value = q ? fmt(q.out, TOK[toTok].dec) : "";
+  el("rateLine").textContent = q ? "1 " + fromTok + " ≈ " + fmtRate(q.rate) + " " + toTok : "—";
+  if(q && q.hops.length === 2){
+    el("routeRow").style.display = "";
+    el("routeLine").textContent = fromTok + " → LUSD → " + toTok;
+    el("feeLine").textContent = "0.3% × 2 hops · ≈ " + fmt(q.hops[0].ain * FEE, 4) + " " + fromTok + " + " + fmt(q.hops[1].ain * FEE, 4) + " LUSD";
+  } else {
+    el("routeRow").style.display = "none";
+    el("feeLine").textContent = q ? "0.3% · ≈ " + fmt(ain * FEE, 4) + " " + fromTok : "—";
+  }
+  var imp = el("impactLine");
+  imp.textContent = q ? q.impact.toFixed(2) + "%" : "—";
+  imp.className = "v" + (q && q.impact > 3 ? " warn" : "");
+  var err = el("swapErr"), btn = el("swapBtn");
+  var insufficient = wallet.connected && ain > 0 && ain > wallet.bal[fromTok];
+  if(insufficient){
+    err.textContent = "Not enough " + fromTok + " — you have " + fmtBal(fromTok, wallet.bal[fromTok]) + " " + fromTok +
+      " and this swap needs " + fmtBal(fromTok, ain) + ". The faucet below hands out free test tokens.";
+    err.className = "err show";
+  } else { err.textContent = ""; err.className = "err"; }
+  if(swapBusy){ btn.disabled = true; btn.textContent = "Swapping…"; }
+  else if(!wallet.connected){ btn.disabled = false; btn.textContent = "Connect demo wallet"; }
+  else if(ain <= 0){ btn.disabled = true; btn.textContent = "Enter an amount"; }
+  else if(insufficient){ btn.disabled = true; btn.textContent = "Not enough " + fromTok; }
+  else { btn.disabled = false; btn.textContent = "Swap " + fromTok + " → " + toTok; }
+}
+function renderAll(){ renderFeed(); renderStats(); renderPools(); renderQuote(); drawChart(); }
+
+/* ---------- actions ---------- */
+function connectWallet(){
+  if(wallet.connected){ toast("Demo wallet already connected: " + wallet.addr); return; }
+  wallet.connected = true;
+  wallet.bal = { zkLTC: START_BAL.zkLTC, LUSD: START_BAL.LUSD, tBTC: START_BAL.tBTC, tETH: START_BAL.tETH };
+  var b = el("connectBtn");
+  b.textContent = wallet.addr;
+  logLine("", "Demo wallet connected: " + wallet.addr + " (simulated — no signature requested).");
+  toast("Demo wallet connected: " + wallet.addr);
+  renderAll();
+}
+function doSwap(){
+  if(!wallet.connected){ connectWallet(); return; }
+  if(swapBusy) return;
+  var ain = parseAmt(el("fromAmt").value);
+  if(ain <= 0 || ain > wallet.bal[fromTok]) return;
+  var q = quote(fromTok, toTok, ain);
+  if(!q) return;
+  swapBusy = true; renderQuote();
+  setTimeout(function(){
+    for(var i=0; i<q.hops.length; i++){
+      var h = q.hops[i];
+      pools[h.poolKey].x = h.nx; pools[h.poolKey].y = h.ny;
+    }
+    wallet.bal[fromTok] -= ain;
+    wallet.bal[toTok] += q.out;
+    poolTouched = true; swapsDone++;
+    el("fromAmt").value = "";
+    swapBusy = false;
+    toast("Swapped " + fmtBal(fromTok, ain) + " " + fromTok + " → " + fmt(q.out, TOK[toTok].dec) + " " + toTok + " · demo tx confirmed");
+    logLine("swap", "Swap: " + fmtBal(fromTok, ain) + " " + fromTok + " → " + fmt(q.out, TOK[toTok].dec) + " " + toTok + ".");
+    pushHist();
+    renderAll();
+  }, 350);
+}
+function doAddLiquidity(){
+  if(!wallet.connected){ connectWallet(); return; }
+  var a = parseAmt(el("liqAmt").value);
+  if(a <= 0){ toast("Enter a zkLTC amount first."); return; }
+  var matched = a * poolPrice("zkLTC");
+  if(a > wallet.bal.zkLTC){ toast("Not enough zkLTC — you have " + fmtBal("zkLTC", wallet.bal.zkLTC) + ". Try the faucet."); return; }
+  if(matched > wallet.bal.LUSD){ toast("Not enough LUSD to match — you need " + fmt(matched) + " LUSD. Try the faucet."); return; }
+  var minted = (a / pools.zkLTC.x) * lp.total;
+  wallet.bal.zkLTC -= a; wallet.bal.LUSD -= matched;
+  pools.zkLTC.x += a; pools.zkLTC.y += matched;
+  lp.user += minted; lp.total += minted;
+  poolTouched = true;
+  el("liqAmt").value = "";
+  toast("Liquidity added · your pool share: " + (lp.user / lp.total * 100).toFixed(2) + "%");
+  logLine("swap", "Liquidity added: " + fmtBal("zkLTC", a) + " zkLTC + " + fmt(matched) + " LUSD · pool share " + (lp.user / lp.total * 100).toFixed(2) + "%.");
+  pushHist();
+  renderAll();
+}
+var faucetReadyAt = 0;
+function updateFaucetBtn(){
+  var b = el("faucetBtn");
+  var left = Math.ceil((faucetReadyAt - Date.now()) / 1000);
+  if(left > 0){ b.disabled = true; b.textContent = "Faucet ready in " + left + "s"; }
+  else { b.disabled = false; b.textContent = "Claim test tokens"; }
+}
+function claimFaucet(){
+  if(!wallet.connected) connectWallet();
+  if(Date.now() < faucetReadyAt) return;
+  wallet.bal.zkLTC += 10; wallet.bal.LUSD += 1000;
+  faucetReadyAt = Date.now() + 30000;
+  updateFaucetBtn();
+  toast("+10 zkLTC and +1,000 LUSD test tokens (demo)");
+  logLine("faucet", "Faucet: +10 zkLTC and +1,000 LUSD test tokens claimed.");
+  renderAll();
+}
+
+/* ---------- wiring ---------- */
+function onPairChange(changed){
+  var other = changed === "from" ? toTok : fromTok;
+  if(changed === "from"){ fromTok = el("fromSel").value; if(fromTok === toTok) toTok = other; }
+  else { toTok = el("toSel").value; if(toTok === fromTok) fromTok = other; }
+  el("fromAmt").value = "";
+  selPool = fromTok !== "LUSD" ? fromTok : toTok;
+  syncPoolUI();
+  renderQuote();
+}
+el("fromSel").addEventListener("change", function(){ onPairChange("from"); });
+el("toSel").addEventListener("change", function(){ onPairChange("to"); });
+el("fromAmt").addEventListener("input", renderQuote);
+el("maxBtn").addEventListener("click", function(){
+  if(!wallet.connected){ toast("Connect the demo wallet first."); return; }
+  el("fromAmt").value = wallet.bal[fromTok].toFixed(TOK[fromTok].balDec);
+  renderQuote();
+});
+el("flipBtn").addEventListener("click", function(){
+  var t = fromTok; fromTok = toTok; toTok = t;
+  el("fromAmt").value = "";
+  selPool = fromTok !== "LUSD" ? fromTok : toTok;
+  syncPoolUI();
+  renderQuote();
+});
+el("swapBtn").addEventListener("click", doSwap);
+el("connectBtn").addEventListener("click", connectWallet);
+el("faucetBtn").addEventListener("click", claimFaucet);
+var resizeTimer = null;
+window.addEventListener("resize", function(){ clearTimeout(resizeTimer); resizeTimer = setTimeout(drawChart, 150); });
+
+/* ---------- init ---------- */
+fillSelect(el("fromSel"), fromTok);
+fillSelect(el("toSel"), toTok);
+buildTabs();
+buildPoolCards();
+seedHistory();
+renderAll();
+logLine("", "PixelSwap demo loaded — the keeper checks every pool every 4 seconds and trades it back toward the Kraken reference.");
+fetchRefs();
+setInterval(fetchRefs, 20000);
+setInterval(keeperTick, 4000);
+setInterval(function(){ pushHist(); drawChart(); }, 2000);
+setInterval(updateFaucetBtn, 1000);
+</script>
+</body>
+</html>
